@@ -169,8 +169,6 @@ st.markdown("Proyección de flujo de caja a 10 años para cría de ganado (Brahm
 # Sidebar
 st.sidebar.header("⚙️ Configuración")
 
-escenario_sel = st.sidebar.radio("Escenario", ["Realista", "Pesimista"], index=0)
-
 st.sidebar.subheader("Parámetros Biológicos")
 tasa_prenez_iatf = st.sidebar.slider("% Preñez IATF", 0.3, 0.7, 0.50, 0.05)
 mortalidad_cria = st.sidebar.slider("% Mortalidad Cría", 0.0, 0.1, 0.04, 0.01)
@@ -184,7 +182,7 @@ capex = st.sidebar.number_input("CAPEX Inicial ($)", value=120000, step=5000)
 capacidad_max = st.sidebar.number_input("Capacidad Máxima (Vientres)", value=1500, step=50)
 
 # Configurar objeto
-config = GanaderiaConfig(escenario_sel)
+config = GanaderiaConfig("Realista")
 
 # Sobrescribir con inputs del usuario (si estamos en modo realista o si queremos permitir override en pesimista 'custom')
 # Nota: La clase aplica el factor estrés en __init__.
