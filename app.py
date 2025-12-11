@@ -215,51 +215,102 @@ config.capacidad_maxima = capacidad_max
 # Correr simulación
 df = simular_proyecto(10, config)
 
-# KPIs
-col1, col2, col3 = st.columns(3)
-vientres_final = df.iloc[-1]["Vientres"]
-caja_final = df.iloc[-1]["Caja Acumulada (con CAPEX)"]
+# Crear pestañas
+tab1, tab2, tab3 = st.tabs(["📊 Simulador Financiero", "🚜 Ingeniería del Proyecto", "🧠 Metodología de Cálculo"])
 
-# Calcular TIR simple (flujos de caja anuales incluyendo inversión inicial año 0)
-flujos = [-config.capex_infraestructura] + df["Flujo Neto (Socios)"].tolist()
-tir = npf.irr(flujos) * 100
+with tab1:
+    # KPIs
+    col1, col2, col3 = st.columns(3)
+    vientres_final = df.iloc[-1]["Vientres"]
+    caja_final = df.iloc[-1]["Caja Acumulada (con CAPEX)"]
 
-with col1:
-    st.metric("Vientres (Año 10)", f"{vientres_final:,.0f}")
-with col2:
-    st.metric("Caja Acumulada (Año 10)", f"${caja_final:,.2f}")
-with col3:
-    st.metric("TIR Estimada", f"{tir:.2f}%")
+    # Calcular TIR simple (flujos de caja anuales incluyendo inversión inicial año 0)
+    flujos = [-config.capex_infraestructura] + df["Flujo Neto (Socios)"].tolist()
+    tir = npf.irr(flujos) * 100
 
-# Gráficos
-st.markdown("### 📈 Evolución del Proyecto")
+    with col1:
+        st.metric("Vientres (Año 10)", f"{vientres_final:,.0f}")
+    with col2:
+        st.metric("Caja Acumulada (Año 10)", f"${caja_final:,.2f}")
+    with col3:
+        st.metric("TIR Estimada", f"{tir:.2f}%")
 
-# 1. Linea: Vientres
-fig_vientres = go.Figure()
-fig_vientres.add_trace(go.Scatter(x=df["Año"], y=df["Vientres"], mode='lines+markers', name='Vientres Activos'))
-fig_vientres.add_hline(y=config.capacidad_maxima, line_dash="dash", annotation_text="Capacidad Máxima")
-fig_vientres.update_layout(title="Crecimiento del Hato vs Capacidad", xaxis_title="Año", yaxis_title="Cabezas")
-st.plotly_chart(fig_vientres, use_container_width=True)
+    # Gráficos
+    st.markdown("### 📈 Evolución del Proyecto")
 
-# 2. Barras: Flujo
-fig_flujo = go.Figure()
-fig_flujo.add_trace(go.Bar(x=df["Año"], y=df["Flujo Operativo"], name='Flujo Operativo', marker_color='#4CAF50'))
-fig_flujo.add_trace(go.Bar(x=df["Año"], y=df["Flujo Neto (Socios)"], name='Flujo Neto (Socios)', marker_color='#2196F3'))
-fig_flujo.update_layout(title="Flujo de Caja Anual", barmode='group', xaxis_title="Año", yaxis_title="USD ($)")
-st.plotly_chart(fig_flujo, use_container_width=True)
+    # 1. Linea: Vientres
+    fig_vientres = go.Figure()
+    fig_vientres.add_trace(go.Scatter(x=df["Año"], y=df["Vientres"], mode='lines+markers', name='Vientres Activos'))
+    fig_vientres.add_hline(y=config.capacidad_maxima, line_dash="dash", annotation_text="Capacidad Máxima")
+    fig_vientres.update_layout(title="Crecimiento del Hato vs Capacidad", xaxis_title="Año", yaxis_title="Cabezas")
+    st.plotly_chart(fig_vientres, use_container_width=True)
 
-# 3. Area: Caja Acumulada
-fig_acum = px.area(df, x="Año", y="Caja Acumulada (con CAPEX)", title="Curva de Recuperación de Inversión (Payback)")
-fig_acum.add_hline(y=0, line_color="red", line_width=2)
-st.plotly_chart(fig_acum, use_container_width=True)
+    # 2. Barras: Flujo
+    fig_flujo = go.Figure()
+    fig_flujo.add_trace(go.Bar(x=df["Año"], y=df["Flujo Operativo"], name='Flujo Operativo', marker_color='#4CAF50'))
+    fig_flujo.add_trace(go.Bar(x=df["Año"], y=df["Flujo Neto (Socios)"], name='Flujo Neto (Socios)', marker_color='#2196F3'))
+    fig_flujo.update_layout(title="Flujo de Caja Anual", barmode='group', xaxis_title="Año", yaxis_title="USD ($)")
+    st.plotly_chart(fig_flujo, use_container_width=True)
 
-# Tabla
-st.markdown("### 📋 Detalle Financiero Año a Año")
-st.dataframe(df.style.format({
-    "Ingresos": "${:,.2f}",
-    "Egresos OPEX": "${:,.2f}",
-    "Flujo Operativo": "${:,.2f}",
-    "Reinversión (70%)": "${:,.2f}",
-    "Flujo Neto (Socios)": "${:,.2f}",
-    "Caja Acumulada (con CAPEX)": "${:,.2f}"
-}))
+    # 3. Area: Caja Acumulada
+    fig_acum = px.area(df, x="Año", y="Caja Acumulada (con CAPEX)", title="Curva de Recuperación de Inversión (Payback)")
+    fig_acum.add_hline(y=0, line_color="red", line_width=2)
+    st.plotly_chart(fig_acum, use_container_width=True)
+
+    # Tabla
+    st.markdown("### 📋 Detalle Financiero Año a Año")
+    st.dataframe(df.style.format({
+        "Ingresos": "${:,.2f}",
+        "Egresos OPEX": "${:,.2f}",
+        "Flujo Operativo": "${:,.2f}",
+        "Reinversión (70%)": "${:,.2f}",
+        "Flujo Neto (Socios)": "${:,.2f}",
+        "Caja Acumulada (con CAPEX)": "${:,.2f}"
+    }))
+
+with tab2:
+    st.markdown("### 🚜 Ingeniería del Proyecto")
+    
+    st.info("**Título: Reactivación Hidráulica y Control de Inundaciones**")
+    st.markdown("""
+    - **Dato:** El proyecto recupera 400 hectáreas actualmente improductivas por saturación hídrica.
+    - **Tecnología:** Uso de Bombas de Flujo Axial. A diferencia de las centrífugas, estas mueven grandes volúmenes de agua a baja altura dinámica, ideal para zonas planas como La Ceiba.
+    - **Objetivo:** Evacuar la precipitación máxima de 24h en menos de 48h para evitar asfixia radicular.
+    """)
+
+    st.info("**Título: La Fábrica de Comida (Agronomía)**")
+    st.markdown("""
+    - **Especie:** *Panicum maximum* cv. Mombasa. Seleccionado por su tolerancia a suelos húmedos y alto potencial de biomasa.
+    - **Manejo:** Pastoreo Racional (PR). El ganado entra cuando el pasto intercepta el 95% de luz (80-90cm) y sale con un remanente de 40-50cm.
+    - **Meta:** Carga animal de 2 a 3 UA/ha (vs 0.8 UA/ha promedio zonal).
+    """)
+
+    st.info("**Título: Genética de Precisión**")
+    st.markdown("""
+    - **Cruce:** Producción de F1 (Brahman x Romosinuano).
+    - **Ventaja:** El vigor híbrido aporta resistencia al trópico húmedo (Brahman) y fertilidad/precocidad sexual (Romosinuano).
+    - **Meta Comercial:** Peso al destete de 190 kg (machos).
+    """)
+
+with tab3:
+    st.markdown("### 🧠 Metodología de Cálculo")
+    st.markdown("""
+    A continuación se listan las reglas lógicas utilizadas en la simulación:
+
+    1. **Regla de Crecimiento (Lag T+2):** 
+       Las hembras nacidas en el Año T tardan 2 años en desarrollarse. Entran al hato reproductivo en el Año T+2.
+    
+    2. **Regla de Compra (Lag T+1):** 
+       El flujo de caja generado y reinvertido en el Año T se usa para comprar vacas que ingresan físicamente al hato en el Año T+1.
+    
+    3. **Política de Reinversión:** 
+       Se reinvierte estrictamente el 70% del Flujo Operativo Disponible (siempre que sea positivo) para compra de vientres.
+    
+    4. **Techo de Carga:** 
+       El modelo detiene automáticamente la compra de animales al alcanzar 1,500 vientres totales para respetar la capacidad de carga del Mombasa.
+    
+    5. **Política de Descarte:**
+       - **Año 1:** Sin descarte de vacías (periodo de gracia).
+       - **Año 2+:** Se vende el 100% de vacas vacías.
+       - **Descarte Estructural:** Se asume un 3% adicional de venta de vacas preñadas por vejez/causas ajenas a la reproducción.
+    """)
