@@ -4,7 +4,8 @@ import numpy as np
 import numpy_financial as npf
 import plotly.express as px
 import plotly.graph_objects as go
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 
 #Set page layout to wide
 st.set_page_config(layout="wide", page_title="Agroven - Simulación Financiera")
@@ -325,31 +326,13 @@ with tab4:
     if "GOOGLE_API_KEY" not in st.secrets:
         st.warning("⚠️ Error: No se encontró la `GOOGLE_API_KEY` en los secretos de Streamlit. Por favor configúrala para activar el asistente.")
     else:
-        # 2. Configurar Modelo
-        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        print(f"Versión de librería GenAI: {genai.__version__}")
-        
-        # Intentamos usar la versión más estable del modelo Flash (Económico)
+        # 2. Inicializar Cliente (SDK v2)
         try:
-            model = genai.GenerativeModel('gemini-1.5-flash')
-        except:
-            # Fallback por si la versión exacta cambia de nombre
-            model = genai.GenerativeModel('gemini-1.5-flash-latest')
+            client = genai.Client(api_key=st.secrets["GOOGLE_API_KEY"])
+        except Exception as e:
+            st.error("Falta configurar la API Key en secrets.")
+            st.stop()
         
-        # System Prompt (Contexto Invisible)
-        system_context = """
-        Eres el Director Veterinario del Proyecto Agroven. 
-        Datos del proyecto: 
-        - Finca de 1020 ha en Trujillo, Venezuela (zona inundable). 
-        - Usamos bombas axiales para drenar 400ha. 
-        - Pasto: Mombasa. 
-        - Sistema: Pastoreo Racional Voisin. 
-        - Genética: F1 Brahman x Romosinuano. 
-        - Meta: 1500 vientres. 
-        - Regla financiera: Reinversión del 70%. 
-        Tu tono es técnico, crítico y directo. Responde dudas sobre manejo sanitario, genética y finanzas ganaderas.
-        """
-
         # 3. Inicializar Historial
         if "messages" not in st.session_state:
             st.session_state.messages = []
@@ -365,12 +348,23 @@ with tab4:
             st.chat_message("user").markdown(prompt)
             st.session_state.messages.append({"role": "user", "content": prompt})
 
-            # Generar respuesta
+            # 6. Lógica de Respuesta (Modelo Lite)
+            # Definir el Prompt del Sistema (Contexto)
+            system_instruction = "Eres el experto veterinario de Agroven. Finca de 1020ha, bombas axiales, pasto Mombasa, ganado F1 Brahman x Romosinuano. Meta: 1500 vientres. Reinversión 70%. Responde técnico y directo."
+            
+            # Configurar la llamada
+            model_id = "gemini-flash-lite-latest"
+            
             try:
-                # Concatenamos contexto + historia reciente para darle 'memoria' simple o solo contexto + prompt actual.
-                full_prompt = f"{system_context}\n\nPregunta del usuario: {prompt}"
+                response = client.models.generate_content(
+                    model=model_id,
+                    contents=prompt,
+                    config=types.GenerateContentConfig(
+                        system_instruction=system_instruction,
+                        temperature=0.3 # Poca creatividad, más precisión
+                    )
+                )
                 
-                response = model.generate_content(full_prompt)
                 bot_reply = response.text
                 
                 # Mostrar respuesta bot
@@ -379,4 +373,4 @@ with tab4:
                 
                 st.session_state.messages.append({"role": "assistant", "content": bot_reply})
             except Exception as e:
-                st.error(f"Error al conectar con Gemini: {e}")
+                st.error(f"Error conectando con {model_id}: {e}")
