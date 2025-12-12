@@ -327,7 +327,9 @@ with tab4:
     else:
         # 2. Configurar Modelo
         genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
-        model = genai.GenerativeModel('gemini-1.5-flash')
+        # Intentamos usar el modelo más reciente
+        model_name = 'gemini-1.5-flash-latest'
+        model = genai.GenerativeModel(model_name)
         
         # System Prompt (Contexto Invisible)
         system_context = """
@@ -359,18 +361,29 @@ with tab4:
             st.session_state.messages.append({"role": "user", "content": prompt})
 
             # Generar respuesta
+            full_prompt = f"{system_context}\n\nPregunta del usuario: {prompt}"
+            
             try:
-                # Concatenamos contexto + historia reciente para darle 'memoria' simple o solo contexto + prompt actual.
-                # Para un chat simple pero efectivo con contexto:
-                full_prompt = f"{system_context}\n\nPregunta del usuario: {prompt}"
-                
+                # Intento primario
                 response = model.generate_content(full_prompt)
                 bot_reply = response.text
                 
                 # Mostrar respuesta bot
                 with st.chat_message("assistant"):
                     st.markdown(bot_reply)
-                
                 st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+                
             except Exception as e:
-                st.error(f"Error al conectar con Gemini: {e}")
+                # Fallback a modelo estable (gemini-pro)
+                try:
+                    st.warning(f"⚠️ El modelo {model_name} falló. Intentando con gemini-pro...")
+                    fallback_model = genai.GenerativeModel('gemini-pro')
+                    response = fallback_model.generate_content(full_prompt)
+                    bot_reply = response.text
+                    
+                    with st.chat_message("assistant"):
+                        st.markdown(bot_reply)
+                    st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+                    
+                except Exception as e2:
+                    st.error(f"Error crítico al conectar con Gemini: {e2}")
