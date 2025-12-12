@@ -6,6 +6,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 from google import genai
 from google.genai import types
+from pypdf import PdfReader
+import docx
 
 #Set page layout to wide
 st.set_page_config(layout="wide", page_title="Agroven - Simulación Financiera")
@@ -349,8 +351,40 @@ with tab4:
             st.session_state.messages.append({"role": "user", "content": prompt})
 
             # 6. Lógica de Respuesta (Modelo Lite)
+            
+            # --- MANEJO DE ARCHIVOS ADJUNTOS ---
+            uploaded_file = st.sidebar.file_uploader("📂 Cargar Documento (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
+            extra_context = ""
+            if uploaded_file is not None:
+                try:
+                    # CASO 1: PDF
+                    if uploaded_file.name.endswith(".pdf"):
+                        pdf_reader = PdfReader(uploaded_file)
+                        for page in pdf_reader.pages:
+                            extra_context += page.extract_text() + "\n"
+                    
+                    # CASO 2: WORD (.docx)
+                    elif uploaded_file.name.endswith(".docx"):
+                        doc = docx.Document(uploaded_file)
+                        for para in doc.paragraphs:
+                            extra_context += para.text + "\n"
+                    
+                    # CASO 3: TEXTO (.txt)
+                    elif uploaded_file.name.endswith(".txt"):
+                        extra_context = uploaded_file.read().decode("utf-8")
+                    
+                    st.sidebar.success(f"✅ Procesado: {uploaded_file.name}")
+                    
+                except Exception as e:
+                    st.sidebar.error(f"Error leyendo archivo: {e}")
+
             # Definir el Prompt del Sistema (Contexto)
-            system_instruction = "Eres el experto veterinario de Agroven. Finca de 1020ha, bombas axiales, pasto Mombasa, ganado F1 Brahman x Romosinuano. Meta: 1500 vientres. Reinversión 70%. Responde técnico y directo."
+            base_system_prompt = "Eres el experto veterinario de Agroven. Finca de 1020ha, bombas axiales, pasto Mombasa, ganado F1 Brahman x Romosinuano. Meta: 1500 vientres. Reinversión 70%. Responde técnico y directo."
+            
+            if extra_context:
+                system_instruction = base_system_prompt + f"\n\n--- DOCUMENTO ADJUNTO POR EL USUARIO ---\n{extra_context}\n---------------------------------------"
+            else:
+                system_instruction = base_system_prompt
             
             # Configurar la llamada
             model_id = "gemini-flash-lite-latest"
