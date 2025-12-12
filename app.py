@@ -4,6 +4,7 @@ import numpy as np
 import numpy_financial as npf
 import plotly.express as px
 import plotly.graph_objects as go
+import google.generativeai as genai
 
 #Set page layout to wide
 st.set_page_config(layout="wide", page_title="Agroven - Simulación Financiera")
@@ -216,7 +217,8 @@ config.capacidad_maxima = capacidad_max
 df = simular_proyecto(10, config)
 
 # Crear pestañas
-tab1, tab2, tab3 = st.tabs(["📊 Simulador Financiero", "🚜 Ingeniería del Proyecto", "🧠 Metodología de Cálculo"])
+# Crear pestañas
+tab1, tab2, tab3, tab4 = st.tabs(["📊 Simulador Financiero", "🚜 Ingeniería del Proyecto", "🧠 Metodología de Cálculo", "🤖 Asistente Veterinario"])
 
 with tab1:
     # KPIs
@@ -312,5 +314,63 @@ with tab3:
     5. **Política de Descarte:**
        - **Año 1:** Sin descarte de vacías (periodo de gracia).
        - **Año 2+:** Se vende el 100% de vacas vacías.
-       - **Descarte Estructural:** Se asume un 3% adicional de venta de vacas preñadas por vejez/causas ajenas a la reproducción.
+   - **Descarte Estructural:** Se asume un 3% adicional de venta de vacas preñadas por vejez/causas ajenas a la reproducción.
     """)
+
+with tab4:
+    st.markdown("### 🤖 Asistente Veterinario (IA)")
+    st.markdown("Consulta cualquier duda técnica, sanitaria o financiera al Director Veterinario Virtual.")
+
+    # 1. Verificar API Key
+    if "GOOGLE_API_KEY" not in st.secrets:
+        st.warning("⚠️ Error: No se encontró la `GOOGLE_API_KEY` en los secretos de Streamlit. Por favor configúrala para activar el asistente.")
+    else:
+        # 2. Configurar Modelo
+        genai.configure(api_key=st.secrets["GOOGLE_API_KEY"])
+        model = genai.GenerativeModel('gemini-1.5-flash')
+        
+        # System Prompt (Contexto Invisible)
+        system_context = """
+        Eres el Director Veterinario del Proyecto Agroven. 
+        Datos del proyecto: 
+        - Finca de 1020 ha en Trujillo, Venezuela (zona inundable). 
+        - Usamos bombas axiales para drenar 400ha. 
+        - Pasto: Mombasa. 
+        - Sistema: Pastoreo Racional Voisin. 
+        - Genética: F1 Brahman x Romosinuano. 
+        - Meta: 1500 vientres. 
+        - Regla financiera: Reinversión del 70%. 
+        Tu tono es técnico, crítico y directo. Responde dudas sobre manejo sanitario, genética y finanzas ganaderas.
+        """
+
+        # 3. Inicializar Historial
+        if "messages" not in st.session_state:
+            st.session_state.messages = []
+
+        # 4. Mostrar Historial en UI
+        for message in st.session_state.messages:
+            with st.chat_message(message["role"]):
+                st.markdown(message["content"])
+
+        # 5. Capturar Input del Usuario
+        if prompt := st.chat_input("Escribe tu consulta aquí..."):
+            # Mostrar mensaje usuario
+            st.chat_message("user").markdown(prompt)
+            st.session_state.messages.append({"role": "user", "content": prompt})
+
+            # Generar respuesta
+            try:
+                # Concatenamos contexto + historia reciente para darle 'memoria' simple o solo contexto + prompt actual.
+                # Para un chat simple pero efectivo con contexto:
+                full_prompt = f"{system_context}\n\nPregunta del usuario: {prompt}"
+                
+                response = model.generate_content(full_prompt)
+                bot_reply = response.text
+                
+                # Mostrar respuesta bot
+                with st.chat_message("assistant"):
+                    st.markdown(bot_reply)
+                
+                st.session_state.messages.append({"role": "assistant", "content": bot_reply})
+            except Exception as e:
+                st.error(f"Error al conectar con Gemini: {e}")
