@@ -6,3 +6,4 @@ numpy-financial
 google-genai
 pypdf
 python-docx
+tqdm

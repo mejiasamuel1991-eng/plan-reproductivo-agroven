@@ -335,6 +335,38 @@ with tab4:
             st.error("Falta configurar la API Key en secrets.")
             st.stop()
         
+        # 2a. Lógica de Archivos (Sidebar Persistente)
+        st.sidebar.header("📁 Documentación Técnica")
+        uploaded_file = st.sidebar.file_uploader(
+            "Cargar PDF, DOCX o TXT", 
+            type=["pdf", "docx", "txt"],
+            key="doc_uploader"
+        )
+        
+        extra_context = ""
+        if uploaded_file is not None:
+            try:
+                # CASO 1: PDF
+                if uploaded_file.name.endswith(".pdf"):
+                    pdf_reader = PdfReader(uploaded_file)
+                    for page in pdf_reader.pages:
+                        extra_context += page.extract_text() + "\n"
+                
+                # CASO 2: WORD (.docx)
+                elif uploaded_file.name.endswith(".docx"):
+                    doc = docx.Document(uploaded_file)
+                    for para in doc.paragraphs:
+                        extra_context += para.text + "\n"
+                
+                # CASO 3: TEXTO (.txt)
+                elif uploaded_file.name.endswith(".txt"):
+                    extra_context = uploaded_file.read().decode("utf-8")
+                
+                st.sidebar.success(f"✅ Procesado: {uploaded_file.name}")
+                
+            except Exception as e:
+                st.sidebar.error(f"Error leyendo archivo: {e}")
+
         # 3. Inicializar Historial
         if "messages" not in st.session_state:
             st.session_state.messages = []
@@ -352,31 +384,7 @@ with tab4:
 
             # 6. Lógica de Respuesta (Modelo Lite)
             
-            # --- MANEJO DE ARCHIVOS ADJUNTOS ---
-            uploaded_file = st.sidebar.file_uploader("📂 Cargar Documento (PDF, DOCX, TXT)", type=["pdf", "docx", "txt"])
-            extra_context = ""
-            if uploaded_file is not None:
-                try:
-                    # CASO 1: PDF
-                    if uploaded_file.name.endswith(".pdf"):
-                        pdf_reader = PdfReader(uploaded_file)
-                        for page in pdf_reader.pages:
-                            extra_context += page.extract_text() + "\n"
-                    
-                    # CASO 2: WORD (.docx)
-                    elif uploaded_file.name.endswith(".docx"):
-                        doc = docx.Document(uploaded_file)
-                        for para in doc.paragraphs:
-                            extra_context += para.text + "\n"
-                    
-                    # CASO 3: TEXTO (.txt)
-                    elif uploaded_file.name.endswith(".txt"):
-                        extra_context = uploaded_file.read().decode("utf-8")
-                    
-                    st.sidebar.success(f"✅ Procesado: {uploaded_file.name}")
-                    
-                except Exception as e:
-                    st.sidebar.error(f"Error leyendo archivo: {e}")
+            # --- MANEJO DE ARCHIVOS ADJUNTOS (Ya procesado arriba) ---
 
             # Definir el Prompt del Sistema (Contexto)
             base_system_prompt = "Eres el experto veterinario de Agroven. Finca de 1020ha, bombas axiales, pasto Mombasa, ganado F1 Brahman x Romosinuano. Meta: 1500 vientres. Reinversión 70%. Responde técnico y directo."
