@@ -1,4 +1,5 @@
 import streamlit as st
+import os
 import pandas as pd
 import numpy as np
 import numpy_financial as npf
@@ -335,32 +336,48 @@ with tab4:
             st.error("Falta configurar la API Key en secrets.")
             st.stop()
         
-        # 2a. Lógica de Archivos (Sidebar Persistente)
+        # 2a. Lógica de Contexto (Cerebro + Uploads)
         st.sidebar.header("📁 Documentación Técnica")
+        
+        contexto_acumulado = ""
+
+        # A. Carga Automática de Cerebro Maestro (Memoria Permanente)
+        CEREBRO_PATH = "CEREBRO_AGROVEN.txt"
+        if os.path.exists(CEREBRO_PATH):
+            try:
+                with open(CEREBRO_PATH, "r", encoding="utf-8") as f:
+                    content = f.read()
+                    contexto_acumulado += content + "\n\n"
+                    st.sidebar.info("✅ Cerebro Maestro: Cargado")
+            except Exception as e:
+                st.sidebar.error(f"Error cargando cerebro: {e}")
+        else:
+            st.sidebar.warning("⚠️ No se detectó cerebro base")
+
+        # B. Carga Manual (Memoria Temporal)
         uploaded_file = st.sidebar.file_uploader(
-            "Cargar PDF, DOCX o TXT", 
+            "Cargar PDF, DOCX o TXT (Extras)", 
             type=["pdf", "docx", "txt"],
             key="doc_uploader"
         )
         
-        extra_context = ""
         if uploaded_file is not None:
             try:
                 # CASO 1: PDF
                 if uploaded_file.name.endswith(".pdf"):
                     pdf_reader = PdfReader(uploaded_file)
                     for page in pdf_reader.pages:
-                        extra_context += page.extract_text() + "\n"
+                        contexto_acumulado += page.extract_text() + "\n"
                 
                 # CASO 2: WORD (.docx)
                 elif uploaded_file.name.endswith(".docx"):
                     doc = docx.Document(uploaded_file)
                     for para in doc.paragraphs:
-                        extra_context += para.text + "\n"
+                        contexto_acumulado += para.text + "\n"
                 
                 # CASO 3: TEXTO (.txt)
                 elif uploaded_file.name.endswith(".txt"):
-                    extra_context = uploaded_file.read().decode("utf-8")
+                    contexto_acumulado += uploaded_file.read().decode("utf-8")
                 
                 st.sidebar.success(f"✅ Procesado: {uploaded_file.name}")
                 
@@ -389,8 +406,8 @@ with tab4:
             # Definir el Prompt del Sistema (Contexto)
             base_system_prompt = "Eres el experto veterinario de Agroven. Finca de 1020ha, bombas axiales, pasto Mombasa, ganado F1 Brahman x Romosinuano. Meta: 1500 vientres. Reinversión 70%. Responde técnico y directo."
             
-            if extra_context:
-                system_instruction = base_system_prompt + f"\n\n--- DOCUMENTO ADJUNTO POR EL USUARIO ---\n{extra_context}\n---------------------------------------"
+            if contexto_acumulado:
+                system_instruction = base_system_prompt + f"\n\n--- DOCUMENTACIÓN TÉCNICA Y CONTEXTO ---\n{contexto_acumulado}\n---------------------------------------"
             else:
                 system_instruction = base_system_prompt
             
